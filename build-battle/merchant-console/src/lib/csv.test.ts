@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { Payment } from "@/data/types"
-import { EXPORT_COLUMNS, exportFilename, toCsv } from "./csv"
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  EXPORT_COLUMNS,
+  exportFilename,
+  toCsv,
+} from "./csv"
 
 /**
  * The export is the file ops hands to a merchant, so a broken cell is a
@@ -81,5 +86,45 @@ describe("exportFilename", () => {
     expect(exportFilename(new Date("2026-03-14T23:00:00.000Z"))).toBe(
       "payments-2026-03-14.csv",
     )
+  })
+
+  it("stamps the status into a current-filter export so scopes do not collide", () => {
+    expect(
+      exportFilename({
+        scope: "filter",
+        status: "disputed",
+        date: new Date("2026-08-13T00:00:00.000Z"),
+      }),
+    ).toBe("payments-disputed-2026-08-13.csv")
+  })
+
+  it("stamps `all` for an all-payments export regardless of status", () => {
+    expect(
+      exportFilename({ scope: "all", date: new Date("2026-08-13T00:00:00.000Z") }),
+    ).toBe("payments-all-2026-08-13.csv")
+  })
+
+  it("falls back to `filter` when the current filter has no status", () => {
+    expect(
+      exportFilename({ scope: "filter", date: new Date("2026-08-13T00:00:00.000Z") }),
+    ).toBe("payments-filter-2026-08-13.csv")
+  })
+})
+
+describe("DEFAULT_EXPORT_COLUMNS", () => {
+  it("excludes card last four so merchant-bound files are clean by default", () => {
+    expect(DEFAULT_EXPORT_COLUMNS).not.toContain("last4")
+    expect(DEFAULT_EXPORT_COLUMNS).toHaveLength(EXPORT_COLUMNS.length - 1)
+  })
+
+  it("writes only the default columns, in their declared order, with no last4", () => {
+    const lines = toCsv([payment], DEFAULT_EXPORT_COLUMNS).split("\n")
+    expect(lines[0]).toBe(DEFAULT_EXPORT_COLUMNS.join(","))
+    expect(lines[0]).not.toContain("last4")
+    expect(lines[1]).not.toContain("4242")
+  })
+
+  it("emits no header and no data when no columns are selected", () => {
+    expect(toCsv([payment], [])).toBe("\n")
   })
 })

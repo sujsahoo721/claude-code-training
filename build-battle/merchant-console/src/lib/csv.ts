@@ -5,9 +5,9 @@ import { formatMoney } from "./money"
 /**
  * CSV export for the payments table.
  *
- * The column set is fixed. Ops has asked for control over it — that is
- * NWP-101 — but today everyone gets every column, including the card
- * last four, whether or not the file is going to a merchant.
+ * `EXPORT_COLUMNS` is the full set the serializer knows how to write. NWP-101
+ * lets ops pick a subset; `last4` is excluded from the default selection
+ * because the file often goes to a merchant.
  */
 
 export const EXPORT_COLUMNS = [
@@ -24,6 +24,11 @@ export const EXPORT_COLUMNS = [
 ] as const
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number]
+
+/** Default selection excludes card last-four so merchant-bound files are clean. */
+export const DEFAULT_EXPORT_COLUMNS = EXPORT_COLUMNS.filter(
+  (column) => column !== "last4",
+) as unknown as readonly ExportColumn[]
 
 function escapeCell(value: string): string {
   if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
@@ -66,6 +71,31 @@ export function toCsv(
   return [header, ...rows].join("\n")
 }
 
-export function exportFilename(date = new Date()): string {
-  return `payments-${date.toISOString().slice(0, 10)}.csv`
+/**
+ * Filename for a payments export. Scope stamps a short label into the name so
+ * two exports of different scopes on the same day do not collide. Date stays
+ * UTC so the contract is stable across ops users in different timezones.
+ *
+ * @param options either a Date (legacy) or `{ scope, status?, date? }`.
+ * @returns the export filename, e.g. `payments-disputed-2026-08-13.csv`.
+ */
+export function exportFilename(
+  options:
+    | Date
+    | { date?: Date }
+    | { scope: "filter" | "all"; status?: string; date?: Date } = {},
+): string {
+  const date = (
+    options instanceof Date ? options : options.date ?? new Date()
+  )
+    .toISOString()
+    .slice(0, 10)
+  if (!(options instanceof Date) && "scope" in options) {
+    const status = options.status && options.status !== "all"
+      ? options.status
+      : undefined
+    const scopePart = options.scope === "all" ? "all" : status ?? "filter"
+    return `payments-${scopePart}-${date}.csv`
+  }
+  return `payments-${date}.csv`
 }
