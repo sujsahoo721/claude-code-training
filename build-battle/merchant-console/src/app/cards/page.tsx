@@ -35,6 +35,9 @@ export default async function CardsPage({
   }
 
   const { rows, total, page, pageCount } = queryCards(filters)
+  const filtered = Boolean(
+    filters.search || filters.merchantId || (filters.status && filters.status !== "all"),
+  )
   const query = new URLSearchParams(
     Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][],
   )
@@ -79,11 +82,14 @@ export default async function CardsPage({
               <TableRow>
                 <TableCell colSpan={7} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
-                    No virtual cards yet
+                    {filtered
+                      ? "No cards match these filters"
+                      : "No virtual cards yet"}
                   </p>
                   <p className="mt-1 text-gray-500">
-                    Issuing one takes a nickname, a merchant, and a spend limit. The number
-                    is generated here and shown once.
+                    {filtered
+                      ? "Clear the search or pick a different status."
+                      : "Issuing one takes a nickname, a merchant, and a spend limit. The number is generated here and shown once."}
                   </p>
                 </TableCell>
               </TableRow>
