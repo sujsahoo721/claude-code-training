@@ -27,15 +27,12 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 const NO_CATEGORY = "none"
+const LABEL = "text-sm font-medium text-gray-900 dark:text-gray-50"
 
 type MerchantOption = { id: string; name: string; currency: Currency }
 type Issued = { card: VirtualCard; fullNumber: string }
 
-export function IssueCard({
-  merchants,
-}: {
-  merchants: MerchantOption[]
-}) {
+export function IssueCard({ merchants }: { merchants: MerchantOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [nickname, setNickname] = useState("")
@@ -45,12 +42,9 @@ export function IssueCard({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<Issued | null>(null)
-  const [idempotencyKey, setIdempotencyKey] = useState(() =>
-    crypto.randomUUID(),
-  )
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
-  const selectedMerchant = merchants.find((m) => m.id === merchantId)
-  const currency = selectedMerchant?.currency ?? null
+  const currency = merchants.find((m) => m.id === merchantId)?.currency ?? null
 
   const reset = () => {
     setNickname("")
@@ -75,26 +69,15 @@ export function IssueCard({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
-
-    if (!currency) {
-      setError("Pick a merchant first.")
-      return
-    }
-
+    if (!currency) return setError("Pick a merchant first.")
     const spendLimit = parseAmountToMinorUnits(limit)
-    if (spendLimit === null) {
-      setError("Enter a limit as an amount like 250.00.")
-      return
-    }
+    if (spendLimit === null) return setError("Enter a limit as an amount like 250.00.")
 
     setPending(true)
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": idempotencyKey,
-        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -104,10 +87,7 @@ export function IssueCard({
         }),
       })
       const body = await response.json()
-      if (!response.ok) {
-        setError(body?.message ?? "Could not issue the card.")
-        return
-      }
+      if (!response.ok) return setError(body?.message ?? "Could not issue the card.")
       setIssued(body as Issued)
     } catch {
       setError("Could not reach the server. Try again.")
@@ -134,82 +114,30 @@ export function IssueCard({
             </DrawerHeader>
 
             <DrawerBody className="space-y-4">
-              <div>
-                <label
-                  htmlFor="nickname"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Nickname
-                </label>
-                <Input
-                  id="nickname"
-                  name="nickname"
-                  value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
-                  placeholder="Ad spend — Q3"
-                  required
-                  className="mt-2"
-                />
-              </div>
+              <Field label="Nickname" htmlFor="nickname">
+                <Input id="nickname" name="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ad spend — Q3" required className="mt-2" />
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="merchantId"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Merchant
-                </label>
+              <Field label="Merchant" htmlFor="merchantId">
                 <Select value={merchantId} onValueChange={setMerchantId}>
                   <SelectTrigger id="merchantId" className="mt-2">
                     <SelectValue placeholder="Pick a merchant" />
                   </SelectTrigger>
                   <SelectContent>
                     {merchants.map((merchant) => (
-                      <SelectItem key={merchant.id} value={merchant.id}>
-                        {merchant.name}
-                      </SelectItem>
+                      <SelectItem key={merchant.id} value={merchant.id}>{merchant.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="spendLimit"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Spend limit
-                </label>
-                <Input
-                  id="spendLimit"
-                  name="spendLimit"
-                  inputMode="decimal"
-                  value={limit}
-                  onChange={(event) => setLimit(event.target.value)}
-                  placeholder="250.00"
-                  required
-                  className="mt-2"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  A normal amount, such as 250.00.
-                </p>
-                {currency && (
-                  <p
-                    id="card-currency"
-                    className="mt-1 text-sm text-gray-500"
-                  >
-                    Settles in {currency}
-                  </p>
-                )}
-              </div>
+              <Field label="Spend limit" htmlFor="spendLimit">
+                <Input id="spendLimit" name="spendLimit" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="250.00" required className="mt-2" />
+                <p className="mt-1 text-sm text-gray-500">A normal amount, such as 250.00.</p>
+                {currency && <p id="card-currency" className="mt-1 text-sm text-gray-500">Settles in {currency}</p>}
+              </Field>
 
-              <div>
-                <label
-                  htmlFor="category"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Category lock
-                </label>
+              <Field label="Category lock" htmlFor="category">
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger id="category" className="mt-2">
                     <SelectValue placeholder="No category" />
@@ -217,19 +145,14 @@ export function IssueCard({
                   <SelectContent>
                     <SelectItem value={NO_CATEGORY}>No category</SelectItem>
                     {CARD_CATEGORIES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {CARD_CATEGORY_LABELS[value]}
-                      </SelectItem>
+                      <SelectItem key={value} value={value}>{CARD_CATEGORY_LABELS[value]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               {error && (
-                <div
-                  role="alert"
-                  className="rounded-md bg-red-50 p-3 text-sm text-red-900 ring-1 ring-inset ring-red-600/20 dark:bg-red-400/10 dark:text-red-400 dark:ring-red-400/20"
-                >
+                <div role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-900 ring-1 ring-inset ring-red-600/20 dark:bg-red-400/10 dark:text-red-400 dark:ring-red-400/20">
                   <p className="font-medium">Card not issued</p>
                   <p className="mt-1">{error}</p>
                 </div>
@@ -237,12 +160,7 @@ export function IssueCard({
             </DrawerBody>
 
             <DrawerFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-2 w-full sm:mt-0 sm:w-fit"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="secondary" className="mt-2 w-full sm:mt-0 sm:w-fit" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={pending} className="w-full sm:w-fit">
@@ -256,17 +174,20 @@ export function IssueCard({
   )
 }
 
-function Reveal({
-  issued,
-  merchants,
-  onDone,
-}: {
-  issued: Issued
-  merchants: MerchantOption[]
-  onDone: () => void
-}) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={htmlFor} className={LABEL}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function Reveal({ issued, merchants, onDone }: { issued: Issued; merchants: MerchantOption[]; onDone: () => void }) {
   const { card, fullNumber } = issued
   const merchant = merchants.find((m) => m.id === card.merchantId)
+  const dt = "text-sm text-gray-500"
+  const dd = "mt-1 text-sm text-gray-900 dark:text-gray-50"
 
   return (
     <div className="flex flex-1 flex-col">
@@ -281,43 +202,19 @@ function Reveal({
       <DrawerBody className="space-y-4">
         <div className="rounded-md bg-gray-50 p-4 ring-1 ring-inset ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
           <p className="text-sm text-gray-500">Card number</p>
-          <p className="mt-1 font-mono text-lg font-medium tracking-wider text-gray-900 dark:text-gray-50">
-            {fullNumber}
-          </p>
+          <p className="mt-1 font-mono text-lg font-medium tracking-wider text-gray-900 dark:text-gray-50">{fullNumber}</p>
         </div>
 
         <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-sm text-gray-500">Nickname</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-              {card.nickname}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-gray-500">Merchant</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-gray-50">
-              {merchant?.name ?? card.merchantId}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-gray-500">Spend limit</dt>
-            <dd className="mt-1 text-sm tabular-nums text-gray-900 dark:text-gray-50">
-              {formatMoney(card.spendLimit, card.currency)} {card.currency}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-gray-500">Shown from now on as</dt>
-            <dd className="mt-1 font-mono text-sm text-gray-900 dark:text-gray-50">
-              {maskCardNumber(card.last4)}
-            </dd>
-          </div>
+          <div><dt className={dt}>Nickname</dt><dd className={dd}>{card.nickname}</dd></div>
+          <div><dt className={dt}>Merchant</dt><dd className={dd}>{merchant?.name ?? card.merchantId}</dd></div>
+          <div><dt className={dt}>Spend limit</dt><dd className="mt-1 text-sm tabular-nums text-gray-900 dark:text-gray-50">{formatMoney(card.spendLimit, card.currency)} {card.currency}</dd></div>
+          <div><dt className={dt}>Shown from now on as</dt><dd className="mt-1 font-mono text-sm text-gray-900 dark:text-gray-50">{maskCardNumber(card.last4)}</dd></div>
         </dl>
       </DrawerBody>
 
       <DrawerFooter>
-        <Button onClick={onDone} className="w-full sm:w-fit">
-          Done
-        </Button>
+        <Button onClick={onDone} className="w-full sm:w-fit">Done</Button>
       </DrawerFooter>
     </div>
   )
