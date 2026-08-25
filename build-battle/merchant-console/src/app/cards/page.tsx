@@ -59,7 +59,13 @@ export default async function CardsPage({
             Single-merchant cards for vendor subscriptions, ad spend, and contractor tools.
           </p>
         </div>
-        <IssueCard merchants={merchants.map((m) => ({ id: m.id, name: m.name }))} />
+        <IssueCard
+          merchants={merchants.map((m) => ({
+            id: m.id,
+            name: m.name,
+            currency: m.currency,
+          }))}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">

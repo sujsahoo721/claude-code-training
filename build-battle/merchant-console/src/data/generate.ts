@@ -2,6 +2,7 @@ import { cardReference, lastFour } from "@/lib/cards"
 import { generateCardNumber } from "@/lib/luhn"
 import { merchants } from "./merchants"
 import {
+  CardEvent,
   CardStatus,
   Currency,
   Dispute,
@@ -249,6 +250,42 @@ const CARD_SEEDS: readonly {
   },
 ]
 
+const SEEDED_NOTES: Record<CardStatus, string> = {
+  active: "Card issued.",
+  frozen: "Frozen by ops.",
+  cancelled: "Cancelled by ops.",
+}
+
+/**
+ * History consistent with the seed's current status.
+ *
+ * @param createdAt - When the card was issued.
+ * @param status - The card's current status.
+ * @param daysAgo - Age of the card in days, bounding the transition timestamp.
+ * @returns An issue event, plus one transition event for a frozen or cancelled card.
+ */
+function seedHistory(
+  createdAt: Date,
+  status: CardStatus,
+  daysAgo: number,
+): CardEvent[] {
+  const history: CardEvent[] = [
+    { at: createdAt.toISOString(), from: null, to: "active", note: "Card issued." },
+  ]
+  if (status === "active") return history
+
+  const at = new Date(
+    createdAt.getTime() + between(1, Math.max(1, daysAgo - 1)) * 86_400_000,
+  )
+  history.push({
+    at: at.toISOString(),
+    from: "active",
+    to: status,
+    note: SEEDED_NOTES[status],
+  })
+  return history
+}
+
 function generateCards(): VirtualCard[] {
   return CARD_SEEDS.map((seed, index) => {
     const merchant = merchants.find((m) => m.id === seed.merchantId)!
@@ -268,6 +305,7 @@ function generateCards(): VirtualCard[] {
       status: seed.status,
       category: seed.category,
       createdAt: createdAt.toISOString(),
+      history: seedHistory(createdAt, seed.status, seed.daysAgo),
     }
   })
 }

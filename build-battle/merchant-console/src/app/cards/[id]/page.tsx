@@ -3,12 +3,20 @@ import { CardStatusBadge } from "@/components/ui/cards/CardStatusBadge"
 import { SpendProgress } from "@/components/ui/cards/SpendProgress"
 import { cardById } from "@/data/cards"
 import { merchantById } from "@/data/merchants"
+import { CardStatus, VirtualCard } from "@/data/types"
 import { CARD_CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
 import { formatInZone } from "@/lib/dates"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { CardStatusActions } from "../card-status-actions"
+
+type CardEvent = {
+  at: string
+  from: CardStatus | null
+  to: CardStatus
+  note: string
+}
 
 export default async function CardDetail({
   params,
@@ -20,6 +28,9 @@ export default async function CardDetail({
   if (!card) notFound()
 
   const merchant = merchantById(card.merchantId)!
+  const history = ((card as VirtualCard & { history?: CardEvent[] }).history ?? [])
+    .slice()
+    .sort((a, b) => a.at.localeCompare(b.at))
 
   return (
     <div className="p-4 sm:p-6">
@@ -80,6 +91,33 @@ export default async function CardDetail({
           currency={card.currency}
         />
       </div>
+
+      {history.length > 0 && (
+        <>
+          <Divider />
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Timeline
+          </h2>
+          <ol className="mt-4 space-y-4">
+            {history.map((event, index) => (
+              <li key={index} className="flex gap-3">
+                <span
+                  className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-500"
+                  aria-hidden="true"
+                />
+                <div>
+                  <p className="text-sm text-gray-900 dark:text-gray-50">
+                    {event.note}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {formatInZone(event.at, merchant.timezone)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
     </div>
   )
 }

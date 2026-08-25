@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CARD_CATEGORIES, CARD_CURRENCIES } from "@/data/cards"
+import { CARD_CATEGORIES } from "@/data/cards"
 import { Currency, MerchantCategory, VirtualCard } from "@/data/types"
 import { CARD_CATEGORY_LABELS, maskCardNumber } from "@/lib/cards"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
@@ -28,33 +28,39 @@ import { useState } from "react"
 
 const NO_CATEGORY = "none"
 
+type MerchantOption = { id: string; name: string; currency: Currency }
 type Issued = { card: VirtualCard; fullNumber: string }
 
 export function IssueCard({
   merchants,
 }: {
-  merchants: { id: string; name: string }[]
+  merchants: MerchantOption[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [nickname, setNickname] = useState("")
   const [merchantId, setMerchantId] = useState("")
   const [limit, setLimit] = useState("")
-  const [currency, setCurrency] = useState<Currency>("USD")
   const [category, setCategory] = useState<string>(NO_CATEGORY)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<Issued | null>(null)
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    crypto.randomUUID(),
+  )
+
+  const selectedMerchant = merchants.find((m) => m.id === merchantId)
+  const currency = selectedMerchant?.currency ?? null
 
   const reset = () => {
     setNickname("")
     setMerchantId("")
     setLimit("")
-    setCurrency("USD")
     setCategory(NO_CATEGORY)
     setPending(false)
     setError(null)
     setIssued(null)
+    setIdempotencyKey(crypto.randomUUID())
   }
 
   const onOpenChange = (next: boolean) => {
@@ -70,6 +76,11 @@ export function IssueCard({
     event.preventDefault()
     setError(null)
 
+    if (!currency) {
+      setError("Pick a merchant first.")
+      return
+    }
+
     const spendLimit = parseAmountToMinorUnits(limit)
     if (spendLimit === null) {
       setError("Enter a limit as an amount like 250.00.")
@@ -80,7 +91,10 @@ export function IssueCard({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
           nickname,
           merchantId,
@@ -179,30 +193,14 @@ export function IssueCard({
                 <p className="mt-1 text-sm text-gray-500">
                   A normal amount, such as 250.00.
                 </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="currency"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-50"
-                >
-                  Currency
-                </label>
-                <Select
-                  value={currency}
-                  onValueChange={(next) => setCurrency(next as Currency)}
-                >
-                  <SelectTrigger id="currency" className="mt-2">
-                    <SelectValue placeholder="Currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CARD_CURRENCIES.map((code) => (
-                      <SelectItem key={code} value={code}>
-                        {code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {currency && (
+                  <p
+                    id="card-currency"
+                    className="mt-1 text-sm text-gray-500"
+                  >
+                    Settles in {currency}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -264,7 +262,7 @@ function Reveal({
   onDone,
 }: {
   issued: Issued
-  merchants: { id: string; name: string }[]
+  merchants: MerchantOption[]
   onDone: () => void
 }) {
   const { card, fullNumber } = issued

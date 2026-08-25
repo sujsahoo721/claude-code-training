@@ -80,6 +80,15 @@ export type MerchantCategory =
   | "contractors"
   | "utilities"
 
+export interface CardEvent {
+  /** ISO 8601, always UTC. */
+  at: string
+  /** null for the issue event. */
+  from: CardStatus | null
+  to: CardStatus
+  note: string
+}
+
 export interface VirtualCard {
   id: string
   nickname: string
@@ -97,6 +106,8 @@ export interface VirtualCard {
   category: MerchantCategory | null
   /** ISO 8601, always UTC. */
   createdAt: string
+  /** Status transitions, oldest first. Never carries a card number. */
+  history: CardEvent[]
 }
 
 export interface CardFilters {
