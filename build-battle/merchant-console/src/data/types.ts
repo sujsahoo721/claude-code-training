@@ -71,6 +71,42 @@ export interface Payout {
   paymentIds: string[]
 }
 
+export type CardStatus = "active" | "frozen" | "cancelled"
+
+export type MerchantCategory =
+  | "advertising"
+  | "software"
+  | "travel"
+  | "contractors"
+  | "utilities"
+
+export interface VirtualCard {
+  id: string
+  nickname: string
+  merchantId: string
+  /** Last four of the generated number. The full number is never stored. */
+  last4: string
+  /** Opaque handle for the generated number. Not the number. */
+  reference: string
+  /** Integer minor units. Never a float. */
+  spendLimit: number
+  /** Integer minor units spent against the limit. */
+  spend: number
+  currency: Currency
+  status: CardStatus
+  category: MerchantCategory | null
+  /** ISO 8601, always UTC. */
+  createdAt: string
+}
+
+export interface CardFilters {
+  status?: CardStatus | "all"
+  merchantId?: string
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
 export interface PaymentFilters {
   status?: PaymentStatus | "all"
   merchantId?: string

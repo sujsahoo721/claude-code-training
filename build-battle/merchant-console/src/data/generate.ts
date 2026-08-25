@@ -1,11 +1,16 @@
+import { cardReference, lastFour } from "@/lib/cards"
+import { generateCardNumber } from "@/lib/luhn"
 import { merchants } from "./merchants"
 import {
+  CardStatus,
   Currency,
   Dispute,
+  MerchantCategory,
   Payment,
   PaymentStatus,
   Payout,
   Refund,
+  VirtualCard,
 } from "./types"
 
 /**
@@ -148,7 +153,123 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+const CARD_SEEDS: readonly {
+  nickname: string
+  merchantId: string
+  spendLimit: number
+  spend: number
+  status: CardStatus
+  category: MerchantCategory | null
+  daysAgo: number
+}[] = [
+  {
+    nickname: "Search ads",
+    merchantId: "mch_01",
+    spendLimit: 250_000,
+    spend: 218_400,
+    status: "active",
+    category: "advertising",
+    daysAgo: 74,
+  },
+  {
+    nickname: "Design tooling",
+    merchantId: "mch_02",
+    spendLimit: 90_000,
+    spend: 41_250,
+    status: "active",
+    category: "software",
+    daysAgo: 61,
+  },
+  {
+    nickname: "Warehouse contractors",
+    merchantId: "mch_03",
+    spendLimit: 400_000,
+    spend: 96_000,
+    status: "active",
+    category: "contractors",
+    daysAgo: 52,
+  },
+  {
+    nickname: "Trade show travel",
+    merchantId: "mch_04",
+    spendLimit: 180_000,
+    spend: 174_600,
+    status: "frozen",
+    category: "travel",
+    daysAgo: 45,
+  },
+  {
+    nickname: "Studio utilities",
+    merchantId: "mch_05",
+    spendLimit: 60_000,
+    spend: 23_400,
+    status: "active",
+    category: "utilities",
+    daysAgo: 38,
+  },
+  {
+    nickname: "Retired supplier card",
+    merchantId: "mch_06",
+    spendLimit: 120_000,
+    spend: 119_500,
+    status: "cancelled",
+    category: null,
+    daysAgo: 30,
+  },
+  {
+    nickname: "Analytics subscriptions",
+    merchantId: "mch_07",
+    spendLimit: 75_000,
+    spend: 12_800,
+    status: "active",
+    category: "software",
+    daysAgo: 22,
+  },
+  {
+    nickname: "Courier fuel",
+    merchantId: "mch_08",
+    spendLimit: 50_000,
+    spend: 44_500,
+    status: "active",
+    category: "contractors",
+    daysAgo: 14,
+  },
+  {
+    nickname: "Seasonal campaign",
+    merchantId: "mch_09",
+    spendLimit: 300_000,
+    spend: 0,
+    status: "active",
+    category: "advertising",
+    daysAgo: 5,
+  },
+]
+
+function generateCards(): VirtualCard[] {
+  return CARD_SEEDS.map((seed, index) => {
+    const merchant = merchants.find((m) => m.id === seed.merchantId)!
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
+    createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
+
+    return {
+      id: `card_${pad(index + 1, 4)}`,
+      nickname: seed.nickname,
+      merchantId: seed.merchantId,
+      last4: lastFour(generateCardNumber()),
+      reference: cardReference(rand),
+      spendLimit: seed.spendLimit,
+      spend: seed.spend,
+      currency: merchant.currency,
+      status: seed.status,
+      category: seed.category,
+      createdAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {

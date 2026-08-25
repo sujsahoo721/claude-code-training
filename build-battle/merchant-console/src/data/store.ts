@@ -1,16 +1,12 @@
 import { generate } from "./generate"
 import { merchants } from "./merchants"
-import { Dispute, Payment, Payout, Refund } from "./types"
+import { Dispute, Payment, Payout, Refund, VirtualCard } from "./types"
 
 /**
- * In-memory store.
+ * In-memory store, generated once at boot.
  *
- * Data is generated once at boot and lives for the life of the process.
- * Writes survive the session and vanish on restart. That is deliberate:
- * persistence is NWP-203 and is out of scope for workshop exercises.
- *
- * Held on globalThis so the Next.js dev server's module reloading does not
- * hand every request a fresh copy.
+ * Writes vanish on restart by design; persistence is NWP-203. Held on
+ * globalThis so dev-server module reloading does not hand out a fresh copy.
  */
 
 interface Store {
@@ -19,6 +15,7 @@ interface Store {
   refunds: Refund[]
   disputes: Dispute[]
   payouts: Payout[]
+  cards: VirtualCard[]
 }
 
 declare global {
@@ -27,8 +24,8 @@ declare global {
 }
 
 function createStore(): Store {
-  const { payments, refunds, disputes, payouts } = generate()
-  return { merchants, payments, refunds, disputes, payouts }
+  const { payments, refunds, disputes, payouts, cards } = generate()
+  return { merchants, payments, refunds, disputes, payouts, cards }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()
