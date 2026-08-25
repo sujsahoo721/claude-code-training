@@ -158,96 +158,27 @@ export function generate() {
   return { payments, refunds, disputes, payouts, cards }
 }
 
-const CARD_SEEDS: readonly {
-  nickname: string
-  merchantId: string
-  spendLimit: number
-  spend: number
-  status: CardStatus
-  category: MerchantCategory | null
-  daysAgo: number
-}[] = [
-  {
-    nickname: "Search ads",
-    merchantId: "mch_01",
-    spendLimit: 250_000,
-    spend: 218_400,
-    status: "active",
-    category: "advertising",
-    daysAgo: 74,
-  },
-  {
-    nickname: "Design tooling",
-    merchantId: "mch_02",
-    spendLimit: 90_000,
-    spend: 41_250,
-    status: "active",
-    category: "software",
-    daysAgo: 61,
-  },
-  {
-    nickname: "Warehouse contractors",
-    merchantId: "mch_03",
-    spendLimit: 400_000,
-    spend: 96_000,
-    status: "active",
-    category: "contractors",
-    daysAgo: 52,
-  },
-  {
-    nickname: "Trade show travel",
-    merchantId: "mch_04",
-    spendLimit: 180_000,
-    spend: 174_600,
-    status: "frozen",
-    category: "travel",
-    daysAgo: 45,
-  },
-  {
-    nickname: "Studio utilities",
-    merchantId: "mch_05",
-    spendLimit: 60_000,
-    spend: 23_400,
-    status: "active",
-    category: "utilities",
-    daysAgo: 38,
-  },
-  {
-    nickname: "Retired supplier card",
-    merchantId: "mch_06",
-    spendLimit: 120_000,
-    spend: 119_500,
-    status: "cancelled",
-    category: null,
-    daysAgo: 30,
-  },
-  {
-    nickname: "Analytics subscriptions",
-    merchantId: "mch_07",
-    spendLimit: 75_000,
-    spend: 12_800,
-    status: "active",
-    category: "software",
-    daysAgo: 22,
-  },
-  {
-    nickname: "Courier fuel",
-    merchantId: "mch_08",
-    spendLimit: 50_000,
-    spend: 44_500,
-    status: "active",
-    category: "contractors",
-    daysAgo: 14,
-  },
-  {
-    nickname: "Seasonal campaign",
-    merchantId: "mch_09",
-    spendLimit: 300_000,
-    spend: 0,
-    status: "active",
-    category: "advertising",
-    daysAgo: 5,
-  },
+/** nickname, merchantId, spendLimit, spend, status, category, daysAgo. Amounts are minor units. */
+type CardSeed = [
+  string,
+  string,
+  number,
+  number,
+  CardStatus,
+  MerchantCategory | null,
+  number,
+]
+
+const CARD_SEEDS: readonly CardSeed[] = [
+  ["Search ads", "mch_01", 250_000, 218_400, "active", "advertising", 74],
+  ["Design tooling", "mch_02", 90_000, 41_250, "active", "software", 61],
+  ["Warehouse contractors", "mch_03", 400_000, 96_000, "active", "contractors", 52],
+  ["Trade show travel", "mch_04", 180_000, 174_600, "frozen", "travel", 45],
+  ["Studio utilities", "mch_05", 60_000, 23_400, "active", "utilities", 38],
+  ["Retired supplier card", "mch_06", 120_000, 119_500, "cancelled", null, 30],
+  ["Analytics subscriptions", "mch_07", 75_000, 12_800, "active", "software", 22],
+  ["Courier fuel", "mch_08", 50_000, 44_500, "active", "contractors", 14],
+  ["Seasonal campaign", "mch_09", 300_000, 0, "active", "advertising", 5],
 ]
 
 const SEEDED_NOTES: Record<CardStatus, string> = {
@@ -256,14 +187,7 @@ const SEEDED_NOTES: Record<CardStatus, string> = {
   cancelled: "Cancelled by ops.",
 }
 
-/**
- * History consistent with the seed's current status.
- *
- * @param createdAt - When the card was issued.
- * @param status - The card's current status.
- * @param daysAgo - Age of the card in days, bounding the transition timestamp.
- * @returns An issue event, plus one transition event for a frozen or cancelled card.
- */
+/** History consistent with the seed's current status. */
 function seedHistory(
   createdAt: Date,
   status: CardStatus,
@@ -287,27 +211,32 @@ function seedHistory(
 }
 
 function generateCards(): VirtualCard[] {
-  return CARD_SEEDS.map((seed, index) => {
-    const merchant = merchants.find((m) => m.id === seed.merchantId)!
-    const createdAt = new Date(GENERATED_AT)
-    createdAt.setUTCDate(createdAt.getUTCDate() - seed.daysAgo)
-    createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
+  return CARD_SEEDS.map(
+    (
+      [nickname, merchantId, spendLimit, spend, status, category, daysAgo],
+      index,
+    ) => {
+      const merchant = merchants.find((m) => m.id === merchantId)!
+      const createdAt = new Date(GENERATED_AT)
+      createdAt.setUTCDate(createdAt.getUTCDate() - daysAgo)
+      createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
 
-    return {
-      id: `card_${pad(index + 1, 4)}`,
-      nickname: seed.nickname,
-      merchantId: seed.merchantId,
-      last4: lastFour(generateCardNumber()),
-      reference: cardReference(rand),
-      spendLimit: seed.spendLimit,
-      spend: seed.spend,
-      currency: merchant.currency,
-      status: seed.status,
-      category: seed.category,
-      createdAt: createdAt.toISOString(),
-      history: seedHistory(createdAt, seed.status, seed.daysAgo),
-    }
-  })
+      return {
+        id: `card_${pad(index + 1, 4)}`,
+        nickname,
+        merchantId,
+        last4: lastFour(generateCardNumber()),
+        reference: cardReference(rand),
+        spendLimit,
+        spend,
+        currency: merchant.currency,
+        status,
+        category,
+        createdAt: createdAt.toISOString(),
+        history: seedHistory(createdAt, status, daysAgo),
+      }
+    },
+  )
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
