@@ -81,9 +81,7 @@ export type MerchantCategory =
   | "utilities"
 
 export interface CardEvent {
-  /** ISO 8601, always UTC. */
   at: string
-  /** null for the issue event. */
   from: CardStatus | null
   to: CardStatus
   note: string
@@ -95,18 +93,14 @@ export interface VirtualCard {
   merchantId: string
   /** Last four of the generated number. The full number is never stored. */
   last4: string
-  /** Opaque handle for the generated number. Not the number. */
   reference: string
   /** Integer minor units. Never a float. */
   spendLimit: number
-  /** Integer minor units spent against the limit. */
   spend: number
   currency: Currency
   status: CardStatus
   category: MerchantCategory | null
-  /** ISO 8601, always UTC. */
   createdAt: string
-  /** Status transitions, oldest first. Never carries a card number. */
   history: CardEvent[]
 }
 

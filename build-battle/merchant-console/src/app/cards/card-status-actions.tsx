@@ -1,37 +1,20 @@
 "use client"
 
 import { Button } from "@/components/Button"
-import {
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/Drawer"
+import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/Drawer"
 import { CardStatus } from "@/data/types"
 import { canTransition } from "@/lib/cards"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-export function CardStatusActions({
-  cardId,
-  status,
-}: {
-  cardId: string
-  status: CardStatus
-}) {
+export function CardStatusActions({ cardId, status }: { cardId: string; status: CardStatus }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const target: CardStatus | null =
-    status === "active" && canTransition(status, "frozen")
-      ? "frozen"
-      : status === "frozen" && canTransition(status, "active")
-        ? "active"
+    status === "active" && canTransition(status, "frozen") ? "frozen"
+      : status === "frozen" && canTransition(status, "active") ? "active"
         : null
 
   const canCancel = canTransition(status, "cancelled")
@@ -59,80 +42,39 @@ export function CardStatusActions({
     }
   }
 
-  const targetLabel =
-    target === "frozen" ? "Freeze" : target === "active" ? "Unfreeze" : null
+  const targetLabel = target === "frozen" ? "Freeze" : target === "active" ? "Unfreeze" : null
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {target && (
-        <Button
-          variant="secondary"
-          className="py-1"
-          disabled={pending}
-          onClick={() => apply(target)}
-        >
-          {pending
-            ? target === "frozen"
-              ? "Freezing…"
-              : "Unfreezing…"
-            : targetLabel}
+        <Button variant="secondary" className="py-1" disabled={pending} onClick={() => apply(target)}>
+          {pending ? (target === "frozen" ? "Freezing…" : "Unfreezing…") : targetLabel}
         </Button>
       )}
-      {canCancel && (
-        <CancelAction
-          cardId={cardId}
-          pending={pending}
-          onCancel={() => apply("cancelled")}
-        />
-      )}
-      {error && (
-        <p role="alert" className="basis-full text-xs text-red-600 dark:text-red-400">
-          {error}
-        </p>
-      )}
+      {canCancel && <CancelAction cardId={cardId} pending={pending} onCancel={() => apply("cancelled")} />}
+      {error && <p role="alert" className="basis-full text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }
 
-function CancelAction({
-  cardId,
-  pending,
-  onCancel,
-}: {
-  cardId: string
-  pending: boolean
-  onCancel: () => void
-}) {
+function CancelAction({ cardId, pending, onCancel }: { cardId: string; pending: boolean; onCancel: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
-
-  const confirm = () => {
-    setConfirmOpen(false)
-    onCancel()
-  }
 
   return (
     <Drawer open={confirmOpen} onOpenChange={setConfirmOpen}>
       <DrawerTrigger asChild>
-        <Button variant="destructive" className="py-1" disabled={pending}>
-          Cancel
-        </Button>
+        <Button variant="destructive" className="py-1" disabled={pending}>Cancel</Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>Cancel this card?</DrawerTitle>
           <DrawerDescription>
-            Cancelling is permanent. The card cannot be reactivated, and any
-            remaining spend access is revoked immediately.
+            Cancelling is permanent. The card cannot be reactivated, and any remaining spend access is revoked immediately.
           </DrawerDescription>
         </DrawerHeader>
         <DrawerBody />
         <DrawerFooter>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full sm:w-fit"
-            onClick={() => setConfirmOpen(false)}
-          >
+          <Button type="button" variant="secondary" className="w-full sm:w-fit" onClick={() => setConfirmOpen(false)}>
             Keep card
           </Button>
           <Button
@@ -140,7 +82,7 @@ function CancelAction({
             variant="destructive"
             className="w-full sm:w-fit"
             disabled={pending}
-            onClick={confirm}
+            onClick={() => { setConfirmOpen(false); onCancel() }}
             aria-label={`Cancel card ${cardId} permanently`}
           >
             {pending ? "Cancelling…" : "Cancel card permanently"}

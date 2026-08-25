@@ -8,12 +8,10 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params
-  const card = cardById(id)
-  if (!card) {
-    return NextResponse.json({ message: "Card not found" }, { status: 404 })
-  }
-  return NextResponse.json(card)
+  const card = cardById((await params).id)
+  return card
+    ? NextResponse.json(card)
+    : NextResponse.json({ message: "Card not found" }, { status: 404 })
 }
 
 export async function PATCH(
@@ -30,13 +28,11 @@ export async function PATCH(
   }
 
   const status = (body as { status?: unknown } | null)?.status
-  if (typeof status !== "string" || !STATUSES.includes(status as CardStatus)) {
+  if (typeof status !== "string" || !STATUSES.includes(status as CardStatus))
     return NextResponse.json({ message: "Invalid status" }, { status: 400 })
-  }
 
   const result = setCardStatus(id, status as CardStatus)
-  if (!result.ok) {
-    return NextResponse.json({ message: result.message }, { status: result.code })
-  }
-  return NextResponse.json(result.card, { status: 200 })
+  return result.ok
+    ? NextResponse.json(result.card, { status: 200 })
+    : NextResponse.json({ message: result.message }, { status: result.code })
 }

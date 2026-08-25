@@ -2,8 +2,7 @@ import { createCard, parseCardFilters, queryCards, validateCreateCard } from "@/
 import { NextRequest, NextResponse } from "next/server"
 
 export function GET(request: NextRequest) {
-  const filters = parseCardFilters(request.nextUrl.searchParams)
-  return NextResponse.json(queryCards(filters))
+  return NextResponse.json(queryCards(parseCardFilters(request.nextUrl.searchParams)))
 }
 
 export async function POST(request: NextRequest) {
@@ -15,30 +14,12 @@ export async function POST(request: NextRequest) {
   }
 
   const result = validateCreateCard(body)
-  if (!result.ok) {
-    return NextResponse.json({ message: result.message }, { status: 400 })
-  }
+  if (!result.ok) return NextResponse.json({ message: result.message }, { status: 400 })
 
-  const idempotencyKey = request.headers.get("Idempotency-Key")
-  if (idempotencyKey !== null) {
-    if (
-      idempotencyKey.length < 8 ||
-      idempotencyKey.length > 128 ||
-      !/^[A-Za-z0-9_-]+$/.test(idempotencyKey)
-    ) {
-      return NextResponse.json(
-        { message: "Invalid Idempotency-Key header." },
-        { status: 400 },
-      )
-    }
-  }
+  const key = request.headers.get("Idempotency-Key")
+  if (key !== null && (key.length < 8 || key.length > 128 || !/^[A-Za-z0-9_-]+$/.test(key)))
+    return NextResponse.json({ message: "Invalid Idempotency-Key header." }, { status: 400 })
 
-  const { card, fullNumber, replayed } = createCard(
-    result.value,
-    idempotencyKey ?? undefined,
-  )
-  return NextResponse.json(
-    { card, fullNumber },
-    { status: replayed ? 200 : 201 },
-  )
+  const { card, fullNumber, replayed } = createCard(result.value, key ?? undefined)
+  return NextResponse.json({ card, fullNumber }, { status: replayed ? 200 : 201 })
 }

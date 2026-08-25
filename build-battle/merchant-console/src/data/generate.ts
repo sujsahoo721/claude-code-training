@@ -158,15 +158,14 @@ export function generate() {
   return { payments, refunds, disputes, payouts, cards }
 }
 
-/** nickname, merchantId, spendLimit, spend, status, category, daysAgo. Amounts are minor units. */
 type CardSeed = [
-  string,
-  string,
-  number,
-  number,
-  CardStatus,
-  MerchantCategory | null,
-  number,
+  nickname: string,
+  merchantId: string,
+  spendLimit: number,
+  spend: number,
+  status: CardStatus,
+  category: MerchantCategory | null,
+  daysAgo: number,
 ]
 
 const CARD_SEEDS: readonly CardSeed[] = [
@@ -187,56 +186,39 @@ const SEEDED_NOTES: Record<CardStatus, string> = {
   cancelled: "Cancelled by ops.",
 }
 
-/** History consistent with the seed's current status. */
-function seedHistory(
-  createdAt: Date,
-  status: CardStatus,
-  daysAgo: number,
-): CardEvent[] {
+function seedHistory(createdAt: Date, status: CardStatus, daysAgo: number): CardEvent[] {
   const history: CardEvent[] = [
     { at: createdAt.toISOString(), from: null, to: "active", note: "Card issued." },
   ]
   if (status === "active") return history
-
   const at = new Date(
     createdAt.getTime() + between(1, Math.max(1, daysAgo - 1)) * 86_400_000,
   )
-  history.push({
-    at: at.toISOString(),
-    from: "active",
-    to: status,
-    note: SEEDED_NOTES[status],
-  })
+  history.push({ at: at.toISOString(), from: "active", to: status, note: SEEDED_NOTES[status] })
   return history
 }
 
 function generateCards(): VirtualCard[] {
-  return CARD_SEEDS.map(
-    (
-      [nickname, merchantId, spendLimit, spend, status, category, daysAgo],
-      index,
-    ) => {
-      const merchant = merchants.find((m) => m.id === merchantId)!
-      const createdAt = new Date(GENERATED_AT)
-      createdAt.setUTCDate(createdAt.getUTCDate() - daysAgo)
-      createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
-
-      return {
-        id: `card_${pad(index + 1, 4)}`,
-        nickname,
-        merchantId,
-        last4: lastFour(generateCardNumber()),
-        reference: cardReference(rand),
-        spendLimit,
-        spend,
-        currency: merchant.currency,
-        status,
-        category,
-        createdAt: createdAt.toISOString(),
-        history: seedHistory(createdAt, status, daysAgo),
-      }
-    },
-  )
+  return CARD_SEEDS.map(([nickname, merchantId, spendLimit, spend, status, category, daysAgo], i) => {
+    const merchant = merchants.find((m) => m.id === merchantId)!
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - daysAgo)
+    createdAt.setUTCHours(between(0, 23), between(0, 59), between(0, 59), 0)
+    return {
+      id: `card_${pad(i + 1, 4)}`,
+      nickname,
+      merchantId,
+      last4: lastFour(generateCardNumber()),
+      reference: cardReference(rand),
+      spendLimit,
+      spend,
+      currency: merchant.currency,
+      status,
+      category,
+      createdAt: createdAt.toISOString(),
+      history: seedHistory(createdAt, status, daysAgo),
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
